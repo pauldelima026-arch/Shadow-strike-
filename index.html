@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>SHADOW STRIKE — Blackridge City</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05070d;color:#eaf2ff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;touch-action:none}
+#loading{position:absolute;inset:0;display:grid;place-items:center;background:#05070d;z-index:5}
+#hud{position:absolute;inset:0;pointer-events:none}
+#title{position:absolute;top:14px;left:14px;font-weight:900;letter-spacing:2px;text-shadow:0 0 12px #36d9ff}
+#objective{position:absolute;top:48px;left:14px;font-size:13px;color:#b8d8ff}
+#hint{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:#0b1328cc;border:1px solid #38bdf8;border-radius:12px;padding:8px 12px;font-size:12px;white-space:nowrap}
+#joystick{position:absolute;left:22px;bottom:38px;width:116px;height:116px;border:2px solid #91a7c866;border-radius:50%;background:#14223a77;pointer-events:auto}
+#stick{position:absolute;left:36px;top:36px;width:42px;height:42px;border-radius:50%;background:#64d9ff99;border:1px solid #9cecff}
+#look{position:absolute;right:12px;bottom:130px;width:42vw;height:34vh;pointer-events:auto}
+.buttons{position:absolute;right:16px;bottom:20px;display:flex;gap:9px;pointer-events:auto;flex-wrap:wrap;justify-content:flex-end;max-width:55vw}
+button{background:#10223bde;color:#e8f7ff;border:1px solid #65cfff;border-radius:12px;padding:11px 12px;font-weight:700;touch-action:manipulation}
+button:active{background:#1b4566}
+#center{position:absolute;left:50%;top:50%;width:12px;height:12px;border:1px solid #8ceaff;border-radius:50%;transform:translate(-50%,-50%);opacity:.7}
+@media(min-width:700px){#joystick,#look,.buttons{display:none}#hint{bottom:12px}}
+</style>
+</head>
+<body>
+<div id="loading">Loading Blackridge City…</div>
+<div id="hud">
+<div id="title">SHADOW STRIKE</div>
+<div id="objective">BLACKRIDGE CITY · Explore the street and find the beacon</div>
+<div id="center"></div>
+<div id="hint">Move: WASD / joystick · Look: drag / mouse · Space: jump</div>
+<div id="joystick"><div id="stick"></div></div>
+<div id="look"></div>
+<div class="buttons">
+<button id="sprint">Sprint</button><button id="jump">Jump</button>
+<button id="crouch">Crouch</button><button id="camera">Camera</button><button id="interact">Interact</button>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(() => {
+if(!window.THREE){document.getElementById('loading').textContent='Could not load the 3D engine. Check your internet and refresh.';return;}
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x050711);scene.fog=new THREE.Fog(0x050711,24,110);
+const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,200);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=false;document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0x91caff,0x141020,2));
+const light=new THREE.PointLight(0x33bbff,35,55);light.position.set(0,8,0);scene.add(light);
+function mat(color,em=0){return new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:em});}
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(180,180),mat(0x101522));ground.rotation.x=-Math.PI/2;ground.position.y=-.05;scene.add(ground);
+const road=new THREE.Mesh(new THREE.PlaneGeometry(18,180),mat(0x171b27));road.rotation.x=-Math.PI/2;road.position.y=.01;scene.add(road);
+for(let x of [-9,9]){let line=new THREE.Mesh(new THREE.BoxGeometry(.15,.03,180),mat(0x00bfff,.6));line.position.set(x,.04,0);scene.add(line);}
+for(let z=-80;z<80;z+=8){let dash=new THREE.Mesh(new THREE.BoxGeometry(.22,.03,3),mat(0x71839a));dash.position.set(0,.04,z);scene.add(dash);}
+function building(x,z,w,h,d,color){
+const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color));b.position.set(x,h/2,z);scene.add(b);
+const winmat=mat(0x29b9ff,.55);
+for(let y=2;y<h-1;y+=3)for(let k=-w/2+1;k<w/2-0.3;k+=2){
+const win=new THREE.Mesh(new THREE.BoxGeometry(.7,.9,.08),winmat);win.position.set(x+k,y,z-d/2-.05);scene.add(win);
+}
+}
+for(let z=-70;z<65;z+=12){building(-15,z,10,12+Math.random()*18,9,0x101d36);building(15,z,10,14+Math.random()*22,9,0x16142d);}
+const player=new THREE.Group();scene.add(player);
+const body=new THREE.Mesh(new THREE.CapsuleGeometry(.42,.95,4,8),mat(0x2c8db9));body.position.y=1.1;player.add(body);
+const head=new THREE.Mesh(new THREE.SphereGeometry(.28,12,10),mat(0x9adfff));head.position.y=1.85;player.add(head);
+const beacon=new THREE.Mesh(new THREE.OctahedronGeometry(.7),mat(0x39eaff,1.4));beacon.position.set(0,1.4,-28);scene.add(beacon);
+const ring=new THREE.Mesh(new THREE.TorusGeometry(1.2,.06,8,32),mat(0x39eaff,1));ring.rotation.x=Math.PI/2;ring.position.set(0,.15,-28);scene.add(ring);
+let yaw=0,pitch=0,third=true,move={x:0,y:0},sprinting=false,crouching=false,velY=0,onGround=true;
+const keys={};window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.code==='Space')jump();});window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+function jump(){if(onGround){velY=7;onGround=false;}}
+document.getElementById('jump').onclick=jump;
+document.getElementById('sprint').onpointerdown=()=>sprinting=true;document.getElementById('sprint').onpointerup=()=>sprinting=false;document.getElementById('sprint').onpointerleave=()=>sprinting=false;
+document.getElementById('crouch').onclick=()=>{crouching=!crouching;body.scale.y=crouching?.65:1;};
+document.getElementById('camera').onclick=()=>third=!third;
+document.getElementById('interact').onclick=()=>{if(player.position.distanceTo(beacon.position)<4)document.getElementById('objective').textContent='BEACON FOUND · Nice work, explorer!';else document.getElementById('objective').textContent='OBJECTIVE · The beacon is ahead on the street';};
+let joy=document.getElementById('joystick'),stick=document.getElementById('stick'),joyOn=false,joyId=null;
+function joymove(e){let r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=e.clientX-cx,dy=e.clientY-cy,l=Math.hypot(dx,dy),max=40;if(l>max){dx*=max/l;dy*=max/l;}move.x=dx/max;move.y=-dy/max;stick.style.transform=`translate(${dx}px,${dy}px)`}
+joy.addEventListener('pointerdown',e=>{joyOn=true;joyId=e.pointerId;joy.setPointerCapture(e.pointerId);joymove(e)});
+joy.addEventListener('pointermove',e=>{if(joyOn&&e.pointerId===joyId)joymove(e)});
+function joyend(){joyOn=false;move={x:0,y:0};stick.style.transform='translate(0,0)'}joy.addEventListener('pointerup',joyend);joy.addEventListener('pointercancel',joyend);
+const look=document.getElementById('look');let lookOn=false,lastX=0,lastY=0;
+look.addEventListener('pointerdown',e=>{lookOn=true;lastX=e.clientX;lastY=e.clientY;look.setPointerCapture(e.pointerId)});
+look.addEventListener('pointermove',e=>{if(lookOn){yaw-=(e.clientX-lastX)*.006;pitch=Math.max(-.7,Math.min(.7,pitch-(e.clientY-lastY)*.004));lastX=e.clientX;lastY=e.clientY}});
+look.addEventListener('pointerup',()=>lookOn=false);look.addEventListener('pointercancel',()=>lookOn=false);
+renderer.domElement.addEventListener('mousemove',e=>{if(e.buttons){yaw-=e.movementX*.003;pitch=Math.max(-.7,Math.min(.7,pitch-e.movementY*.003));}});
+function animate(){requestAnimationFrame(animate);beacon.rotation.y+=.015;ring.rotation.z-=.008;
+let mx=move.x+(keys.d?1:0)-(keys.a?1:0),mz=move.y+(keys.w?1:0)-(keys.s?1:0);let l=Math.hypot(mx,mz);if(l>1){mx/=l;mz/=l;}
+let speed=crouching?2.2:(sprinting?7:4);player.position.x+=((mx*Math.cos(yaw)+mz*Math.sin(yaw))*speed)*.016;player.position.z+=((-mx*Math.sin(yaw)+mz*Math.cos(yaw))*speed)*.016;
+velY-=18*.016;player.position.y+=velY*.016;if(player.position.y<0){player.position.y=0;velY=0;onGround=true;}
+player.rotation.y=yaw;
+let target=new THREE.Vector3(player.position.x,player.position.y+1.5,player.position.z);
+if(third){let offset=new THREE.Vector3(0,2.4,5.5).applyAxisAngle(new THREE.Vector3(0,1,0),yaw);camera.position.copy(target).add(offset);camera.lookAt(target);}
+else{camera.position.copy(target);camera.rotation.set(pitch,yaw,0,'YXZ');}
+renderer.render(scene,camera);}
+animate();document.getElementById('loading').remove();
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+})();
+</script>
+</body>
+</html>
